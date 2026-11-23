@@ -148,4 +148,3 @@ endmacro()
 
 add_subdirectory(core)
 add_subdirectory(extensions)
-add_subdirectory(vulkan)

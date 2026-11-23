@@ -12,10 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-add_sample(
-    TARGET ocean_gl_ocl_interop
-    VERSION 300
-    SOURCES main.cpp ocean.cpp ocean.hpp ocean_util.hpp
-    KERNELS twiddle.cl time_spectrum.cl inversion.cl normals.cl fft_kernel.cl init_spectrum.cl
-    SHADERS ocean.vert.glsl ocean.frag.glsl
-    LIBS glm::glm)
+set(OCEAN_KERNELS twiddle.cl time_spectrum.cl inversion.cl normals.cl fft_kernel.cl init_spectrum.cl)
+
+if(OPENCL_SDK_BUILD_OPENGL_SAMPLES)
+  add_sample(
+      TARGET ocean_gl_ocl_interop
+      VERSION 300
+      SOURCES main.cpp ocean.cpp ocean.hpp ocean_util.hpp
+      KERNELS ${OCEAN_KERNELS}
+      SHADERS ocean.vert.glsl ocean.frag.glsl
+      LIBS glm::glm)
+endif()
+
+# The Vulkan version shares the OpenCL kernels; its sources are in vulkan/
+if(OPENCL_SDK_BUILD_VULKAN_SAMPLES)
+  add_sample(
+      TARGET ocean_vk_ocl_interop
+      VERSION 300 # clCreateImageWithProperties
+      CATEGORY vulkan
+      SOURCES vulkan/main.cpp vulkan/ocean.cpp vulkan/ocean.hpp vulkan/ocean_util.hpp
+      SHADERS ocean.vert.spv ocean.frag.spv
+      KERNELS ${OCEAN_KERNELS}
+      INCLUDES ${Vulkan_INCLUDE_DIR}
+      LIBS ${Vulkan_LIBRARY} glm::glm
+      DEFINITIONS
+          $<$<PLATFORM_ID:Windows>:NOMINMAX>
+          $<$<PLATFORM_ID:Windows>:WIN32_LEAN_AND_MEAN>)
+endif()
