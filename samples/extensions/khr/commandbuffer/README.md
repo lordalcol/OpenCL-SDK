@@ -8,7 +8,7 @@ Recording the commands once saves the work of setting up and enqueuing each comm
 
 ## Key APIs and Concepts
 
-- The device must support `cl_khr_command_buffer`. If it doesn't, the sample says so and exits. The extension is still provisional in the OpenCL headers, so the sample defines `CL_ENABLE_BETA_EXTENSIONS`.
+- The device must support `cl_khr_command_buffer`. If the selected device doesn't, the sample uses the first device that does, and exits if there is none. The extension is still provisional in the OpenCL headers, so the sample defines `CL_ENABLE_BETA_EXTENSIONS`.
 - The command queue is created with the properties the device requires for command buffers (`CL_DEVICE_COMMAND_BUFFER_REQUIRED_QUEUE_PROPERTIES_KHR`).
 - Kernel arguments are captured when a kernel command is recorded, so they are set before recording.
 - Commands in a command buffer have no implicit order, even when the command buffer is created with an in-order queue. Their dependencies are set with sync points: `add` waits for the sync point that `square` returns.
@@ -17,7 +17,7 @@ Recording the commands once saves the work of setting up and enqueuing each comm
 
 ## Application flow
 
-1. Select a device and check that it supports `cl_khr_command_buffer`.
+1. Select a device that supports `cl_khr_command_buffer`.
 2. Create a command queue with the required properties, and build the two kernels.
 3. Create the buffers and set the kernel arguments.
 4. Record `square` and `add` into a command buffer, with a sync point between them, and finalize it.

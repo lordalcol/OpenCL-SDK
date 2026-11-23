@@ -74,6 +74,34 @@ int main(int argc, char* argv[])
         // Create runtime objects based on user preference or default
         cl::Context context = cl::sdk::get_context(dev_opts.triplet);
         cl::Device device = context.getInfo<CL_CONTEXT_DEVICES>().at(0);
+
+        // If the selected device can't run command buffers, use the first
+        // device that can
+        if (!cl::util::supports_extension(device, "cl_khr_command_buffer"))
+        {
+            std::cout << device.getInfo<CL_DEVICE_NAME>()
+                      << " does not support cl_khr_command_buffer."
+                      << std::endl;
+            std::vector<cl::Platform> platforms;
+            cl::Platform::get(&platforms);
+            device = cl::Device{};
+            for (const auto& p : platforms)
+            {
+                std::vector<cl::Device> devices;
+                p.getDevices(CL_DEVICE_TYPE_ALL, &devices);
+                for (const auto& d : devices)
+                    if (!device()
+                        && cl::util::supports_extension(
+                            d, "cl_khr_command_buffer"))
+                        device = d;
+            }
+            if (!device())
+            {
+                std::cout << "No device supports it." << std::endl;
+                return EXIT_SUCCESS;
+            }
+            context = cl::Context{ device };
+        }
         cl::Platform platform{ device.getInfo<CL_DEVICE_PLATFORM>() };
 
         if (!diag_opts.quiet)
@@ -83,14 +111,6 @@ int main(int argc, char* argv[])
                       << "Selected device: " << device.getInfo<CL_DEVICE_NAME>()
                       << "\n"
                       << std::endl;
-        }
-
-        if (!cl::util::supports_extension(device, "cl_khr_command_buffer"))
-        {
-            std::cout << "The device does not support cl_khr_command_buffer. "
-                         "Choose another device with -p and -d."
-                      << std::endl;
-            return EXIT_SUCCESS;
         }
 
         // Some devices need queue properties to run command buffers
