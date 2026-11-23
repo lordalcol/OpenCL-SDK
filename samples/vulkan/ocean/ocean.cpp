@@ -503,21 +503,51 @@ void OceanApplication::pick_physical_device()
     std::vector<VkPhysicalDevice> devices(deviceCount);
     vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 
-    for (size_t i = 0; i < devices.size(); i++)
-    {
-        if (app_opts.vulkan_device >= 0 && app_opts.vulkan_device != int(i))
-            continue;
+    // Memory can be shared only when OpenCL and Vulkan run on the same device
+    cl_uchar cl_uuid[CL_UUID_SIZE_KHR] = {};
+    cl::Device cl_device = context.getInfo<CL_CONTEXT_DEVICES>().at(0);
+    bool has_cl_uuid = app_opts.use_external_memory
+        && cl::util::supports_extension(cl_device, "cl_khr_device_uuid")
+        && clGetDeviceInfo(cl_device(), CL_DEVICE_UUID_KHR, sizeof(cl_uuid),
+                           cl_uuid, nullptr)
+            == CL_SUCCESS;
+    auto same_device_as_cl = [&](VkPhysicalDevice device) {
+        VkPhysicalDeviceIDProperties id{};
+        id.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES;
+        VkPhysicalDeviceProperties2 props{};
+        props.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+        props.pNext = &id;
+        vkGetPhysicalDeviceProperties2(device, &props);
+        return has_cl_uuid
+            && memcmp(id.deviceUUID, cl_uuid, CL_UUID_SIZE_KHR) == 0;
+    };
 
-        if (is_device_suitable(devices[i]))
+    // Prefer the device OpenCL runs on
+    for (int pass = 0; pass < 2 && physical_device == VK_NULL_HANDLE; pass++)
+        for (size_t i = 0; i < devices.size(); i++)
         {
-            physical_device = devices[i];
-            break;
+            if (app_opts.vulkan_device >= 0 && app_opts.vulkan_device != int(i))
+                continue;
+            if (pass == 0 && !(has_cl_uuid && same_device_as_cl(devices[i])))
+                continue;
+
+            if (is_device_suitable(devices[i]))
+            {
+                physical_device = devices[i];
+                break;
+            }
         }
-    }
 
     if (physical_device == VK_NULL_HANDLE)
     {
         throw std::runtime_error("failed to find a suitable GPU!");
+    }
+
+    if (app_opts.use_external_memory && !same_device_as_cl(physical_device))
+    {
+        printf("OpenCL and Vulkan run on different devices: copying the "
+               "images.\n");
+        app_opts.use_external_memory = false;
     }
 
     VkPhysicalDeviceProperties properties{};
@@ -1813,8 +1843,7 @@ void OceanApplication::update_spectrum(uint32_t currentImage, float elapsed)
     {
         try
         {
-            size_t log_2_N =
-                (size_t)((log((float)ocean_tex_size) / log(2.f)));
+            size_t log_2_N = (size_t)((log((float)ocean_tex_size) / log(2.f)));
 
             /// Prepare vector of values to extract results
             std::vector<cl_int> v(ocean_tex_size);
