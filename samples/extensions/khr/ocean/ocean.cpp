@@ -112,8 +112,8 @@ void OceanApplication::initializeGL()
 
     glViewport(0, 0, getSize().x, getSize().y);
     checkError("glViewport(0, 0, getSize().x, getSize().y)");
-    glClearColor(0.f, 0.f, 0.f, 1.f);
-    checkError("glClearColor(0.f, 0.f, 0.f, 0.f)");
+    glClearColor(0.72f, 0.80f, 0.88f, 1.f); // hazy sky at the horizon
+    checkError("glClearColor");
     glEnable(GL_DEPTH_TEST);
     checkError("glEnable(GL_DEPTH_TEST)");
     glDepthFunc(GL_LESS);
