@@ -1,10 +1,10 @@
-# Ocean surface simulation with Opencl and Vulkan interoperability
+# Ocean surface simulation with OpenCL and Vulkan interoperability
 
-[Ocean Simulation With OpenCL and Vulkan](ocean.png)
+![Ocean Simulation With OpenCL and Vulkan](ocean.png)
 
 ## Sample Purpose
 
-This sample demonstrates how to share compute/render resources between OpenCL and Vulkan to simulate an ocean surface. If the cl_khr_external_memory extension is available and requested (through CLI options), some OpenCL images will be created through a file descriptor handle received with vkGetMemoryFdKHR. These images will then be used for ocean rendering. If cl_khr_external_memory is not available, additional copying from OpenCL buffers to Vulkan images will be performed.
+This sample demonstrates how to share compute/render resources between OpenCL and Vulkan to simulate an ocean surface. It uses the same OpenCL kernels as the OpenGL ocean sample in the parent folder. If the device supports the cl_khr_external_memory extension and Vulkan runs on the same device as OpenCL, the OpenCL images used for rendering are created from Vulkan memory, exported with vkGetMemoryFdKHR on Linux or vkGetMemoryWin32HandleKHR on Windows. Otherwise, or if external memory is turned off on the command line, the OpenCL images are copied to the Vulkan images every frame.
 
 ## Key APIs and Concepts
 
@@ -15,37 +15,38 @@ The primary focus of this sample is to understand how to set up shared resources
 
 The application performs an initial setup during which:
 
-    -An OpenCL platform and Vulkan physical device are selected based on CLI options.
-    -OpenCL and Vulkan devices are prepared.
-    -A GLFW window, camera, and related keyboard event callbacks are created.
-    -Both shared and private resources for OpenCL and Vulkan are set up.
+- An OpenCL device is selected based on CLI options, and Vulkan picks the physical device with the same UUID (cl_khr_device_uuid), if there is one.
+- OpenCL and Vulkan devices are prepared.
+- A SFML window, camera, and related keyboard event callbacks are created.
+- Both shared and private resources for OpenCL and Vulkan are set up.
 
 Available CLI options are as follows:
 
-    --window_width, specifies initial window width
-    --window_height, specifies initial window window_height
-    --vulkan_device, requests number of vulkan physical device
-    --immediate, requests preference of VK_PRESENT_MODE_IMMEDIATE_KHR (no vsync)
-    --linear, requests use of linearly tiled images 
-    --deviceLocalImages, requests use of device local images
-    --useExternalMemory, requests use of cl_khr_external_memory
+- `-p`, `-d`, `-t`: index of the platform, index of the device, and device type to use for OpenCL
+- `-x`, `-y`: window width and height
+- `--vulkan_device <index>`: Vulkan physical device to use (default: the one OpenCL runs on)
+- `--immediate <0|1>`: prefer VK_PRESENT_MODE_IMMEDIATE_KHR, no vsync (default: 0)
+- `--linear <0|1>`: use linearly tiled images (default: 0)
+- `--deviceLocalImages <0|1>`: use device local images (default: 1)
+- `--useExternalMemory <0|1>`: use cl_khr_external_memory when possible (default: 1)
+- `--validationLayersOn <0|1>`: enable the Vulkan validation layers (default: 0)
 
 After the setup, the simulation starts with initial ocean parameters that can be modified with keyboard events in real-time:
 
-    - a/z - Increase/decrease wind magnitude.
-    - s/x - Change wind heading.
-    - d/c - Increase/decrease waving amplitude.
-    - f/v - Increase/decrease wave choppiness.
-    - g/b - Increase/decrease additional altitude scale.
+- a/z - Increase/decrease wind magnitude.
+- s/x - Change wind heading.
+- d/c - Increase/decrease waving amplitude.
+- f/v - Increase/decrease wave choppiness.
+- g/b - Increase/decrease additional altitude scale.
 
 Additionally, the simulation and rendering can be paused with the Space key. Rendering can toggle between wireframe and filled modes using the 'w' key. Application tracks its performance in the title bar of the window, it could be toggled by pressing 'e' key.
 
 While the simulation is in progress, each frame of the application performs the following general steps:
 
-    -Necessary Vulkan/OpenCL semaphores are signaled/waited.
-    -Uniform buffers are updated to handle camera and ocean parameters.
-    -OpenCL kernels are enqueued.
-    -The ocean grid is rendered using the previous OpenCL computation outcome.
+- Vulkan waits until the previous use of the frame's resources is complete.
+- Uniform buffers are updated to handle camera and ocean parameters.
+- OpenCL kernels are enqueued, and OpenCL finishes before Vulkan uses the images.
+- The ocean grid is rendered using the previous OpenCL computation outcome.
 
 
 ### Kernel logic
@@ -68,6 +69,8 @@ cl::Error::what()
 cl::Error::err()
 cl::NDRange(size_type, size_type)
 cl::Buffer::Buffer(cl::Context, cl_mem_flags, size_type)
+cl::CommandQueue::enqueueAcquireExternalMemObjects(const vector<cl::Memory>&)
+cl::CommandQueue::enqueueReleaseExternalMemObjects(const vector<cl::Memory>&)
+clCreateImageWithProperties(cl_context, const cl_mem_properties*, cl_mem_flags, const cl_image_format*, const cl_image_desc*, void*, cl_int*)
+clGetDeviceInfo(CL_DEVICE_UUID_KHR)
 ```
-
-
