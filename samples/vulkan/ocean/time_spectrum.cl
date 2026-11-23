@@ -41,10 +41,13 @@ kernel void spectrum( float dt, int2 patch_info,
 {
     int2 uv = (int2)((int)get_global_id(0), (int)get_global_id(1));
     int res = patch_info.y;
-    float2 wave_vec = convert_float2(uv) - (float2)((float)(res-1)/2.f);
-    float2 k = (2.f * PI * wave_vec) / patch_info.x;
+    float2 wave_vec = convert_float2(uv) - (float2)((float)(res)/2.f);
+
+    float k_min = PI / patch_info.x;
+    float2 k = (2.f * wave_vec) * k_min;
     float k_mag = length(k);
 
+    if (k_mag < k_min) k_mag = k_min;
     float w = sqrt(G * k_mag);
 
     float4 h0k = read_imagef(src, sampler, uv);
@@ -62,11 +65,11 @@ kernel void spectrum( float dt, int2 patch_info,
     complex h_k_t_dy = add(mul(fourier_amp, exp_iwt), (mul(fourier_amp_conj, exp_iwt_inv)));
 
     // dx
-    complex dx = (complex)(0.0, k.x/k_mag);
+    complex dx = (complex)(0.0,-k.x/k_mag);
     complex h_k_t_dx = mul(dx, h_k_t_dy);
 
     // dz
-    complex dz = (complex)(0.0, k.y/k_mag);
+    complex dz = (complex)(0.0,-k.y/k_mag);
     complex h_k_t_dz = mul(dz, h_k_t_dy);
 
     // amplitude

@@ -159,7 +159,7 @@ void OceanApplication::init_openCL_mems()
             context, CL_MEM_READ_WRITE, cl::ImageFormat(CL_RGBA, CL_FLOAT),
             ocean_tex_size, ocean_tex_size);
 
-        size_t log_2_N = (size_t)((log((float)ocean_tex_size) / log(2.f)) - 1);
+        size_t log_2_N = (size_t)((log((float)ocean_tex_size) / log(2.f)));
 
         twiddle_factors_mem = std::make_unique<cl::Image2D>(
             context, CL_MEM_READ_WRITE, cl::ImageFormat(CL_RGBA, CL_FLOAT),
@@ -1814,7 +1814,7 @@ void OceanApplication::update_spectrum(uint32_t currentImage, float elapsed)
         try
         {
             size_t log_2_N =
-                (size_t)((log((float)ocean_tex_size) / log(2.f)) - 1);
+                (size_t)((log((float)ocean_tex_size) / log(2.f)));
 
             /// Prepare vector of values to extract results
             std::vector<cl_int> v(ocean_tex_size);
@@ -1895,7 +1895,7 @@ void OceanApplication::update_spectrum(uint32_t currentImage, float elapsed)
 
 
     // perform 1D FFT horizontal and vertical iterations
-    size_t log_2_N = (size_t)((log((float)ocean_tex_size) / log(2.f)) - 1);
+    size_t log_2_N = (size_t)((log((float)ocean_tex_size) / log(2.f)));
     fft_kernel.setArg(1, patch);
     fft_kernel.setArg(2, *twiddle_factors_mem);
     for (cl_int i = 0; i < 3; i++)
