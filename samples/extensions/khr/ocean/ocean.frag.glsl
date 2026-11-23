@@ -31,15 +31,15 @@ layout(std140, binding = 2) uniform ViewData {
 } view;
 
 const vec3 env_specular = vec3(0.8);
-const float specular_power = 32.0;
-const float specular_scale = 0.75;
+const float specular_power = 400.0;
+const float specular_scale = 6.0;
 
-const float fresnel_approx_pow_factor = 2.0;
-const float dyna_range = 0.8f;
-
-const vec3 ocean_bright = vec3(0.5, 1.6, 2.15);
 const vec3 ocean_dark = vec3(0.03, 0.06, 0.135);
 const float exposure = 0.4;
+const vec3 sky_horizon = vec3(3.2, 4.0, 5.3); // the clear colour after hdr()
+const vec3 sky_zenith = vec3(0.9, 1.4, 2.3);
+const vec3 haze_color = vec3(0.72, 0.80, 0.88); // the clear colour
+const float haze_density = 0.005;             // per metre
 
 vec3 hdr(vec3 color, float exposure)
 {
@@ -113,9 +113,13 @@ void main()
     }
 
     // refraction factors and final color assembly
-    float fresnel = clamp(pow( 1.0 + n_dot_e, -fresnel_approx_pow_factor ) * dyna_range, 0.0, 1.0);
-    vec3 bright = fresnel * ocean_bright;
-    vec3 water = (1.0 - fresnel) * ocean_dark * ocean_bright * diffuse;
+    // Schlick's approximation, 2% reflectivity looking straight down
+    float fresnel = 0.02 + 0.98 * pow(1.0 - clamp(n_dot_e, 0.0, 1.0), 5.0);
+    vec3 r = reflect(view_dir, normal);
+    float r_up = clamp(dot(r, norm_mat * vec3(0.0, 0.0, 1.0)), 0.0, 1.0);
+    vec3 bright = fresnel * mix(sky_horizon, sky_zenith, sqrt(r_up));
+    vec3 water = (1.0 - fresnel) * ocean_dark * (2.0 + 6.0 * diffuse);
     vec3 color = bright + water + specular;
-    out_color = vec4(hdr(color, exposure) + vec3(foam_fac), 1.0);
+    float haze = exp(-pow(length(ec_pos.xyz) * haze_density, 2.0));
+    out_color = vec4(mix(haze_color, hdr(color, exposure) + vec3(foam_fac), haze), 1.0);
 }
