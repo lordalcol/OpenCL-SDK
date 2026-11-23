@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+add_subdirectory(commandbuffer)
 add_subdirectory(histogram)
 if(OPENCL_SDK_BUILD_OPENGL_SAMPLES)
   add_subdirectory(conway)
